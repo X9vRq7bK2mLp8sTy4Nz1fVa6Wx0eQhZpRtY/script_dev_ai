@@ -4,103 +4,111 @@ import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-    const router = useRouter()
-    const [username, setUsername] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
+  const router = useRouter()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault()
-        setError('')
-        setLoading(true)
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
-        try {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            })
+    try {
+      // First, try to initialize the database (idempotent - won't fail if already initialized)
+      try {
+        await fetch('/api/init')
+      } catch (initError) {
+        console.log('DB init attempted')
+      }
 
-            const data = await res.json()
+      // Then attempt login
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
 
-            if (!res.ok) {
-                setError(data.error || 'Login failed')
-                setLoading(false)
-                return
-            }
+      const data = await res.json()
 
-            // Success - redirect to main app
-            router.push('/')
-            router.refresh()
-        } catch (err) {
-            setError('Network error. Please try again.')
-            setLoading(false)
-        }
+      if (!res.ok) {
+        setError(data.error || 'Login failed')
+        setLoading(false)
+        return
+      }
+
+      // Success - redirect to main app
+      window.location.href = '/'
+    } catch (err: any) {
+      console.error('Login error:', err)
+      setError(err.message || 'Network error. Please try again.')
+      setLoading(false)
     }
+  }
 
-    return (
-        <div className="login-container">
-            <div className="login-card">
-                <div className="login-header">
-                    <span className="login-logo">🎮</span>
-                    <h1>Roblox Script Dev AI</h1>
-                    <p>AI-Powered Script Development Platform</p>
-                </div>
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <span className="login-logo">🎮</span>
+          <h1>Roblox Script Dev AI</h1>
+          <p>AI-Powered Script Development Platform</p>
+        </div>
 
-                <form onSubmit={handleSubmit} className="login-form">
-                    <div className="form-group">
-                        <label htmlFor="username">Username</label>
-                        <input
-                            id="username"
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Enter your username"
-                            required
-                            autoFocus
-                        />
-                    </div>
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username"
+              required
+              autoFocus
+            />
+          </div>
 
-                    <div className="form-group">
-                        <label htmlFor="password">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter your password"
-                            required
-                        />
-                    </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+            />
+          </div>
 
-                    {error && (
-                        <div className="error-message">
-                            <span>⚠️</span>
-                            {error}
-                        </div>
-                    )}
-
-                    <button type="submit" disabled={loading} className="btn btn-primary login-btn">
-                        {loading ? (
-                            <>
-                                <span className="spinner"></span>
-                                Logging in...
-                            </>
-                        ) : (
-                            'Login'
-                        )}
-                    </button>
-                </form>
-
-                <div className="login-footer">
-                    <p className="login-hint">
-                        💡 Default: <code>admin</code> / <code>admin1234</code>
-                    </p>
-                </div>
+          {error && (
+            <div className="error-message">
+              <span>⚠️</span>
+              {error}
             </div>
+          )}
 
-            <style jsx>{`
+          <button type="submit" disabled={loading} className="btn btn-primary login-btn">
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                Logging in...
+              </>
+            ) : (
+              'Login'
+            )}
+          </button>
+        </form>
+
+        <div className="login-footer">
+          <p className="login-hint">
+            💡 Default: <code>admin</code> / <code>admin1234</code>
+          </p>
+        </div>
+      </div>
+
+      <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -201,6 +209,6 @@ export default function LoginPage() {
           font-family: 'Monaco', monospace;
         }
       `}</style>
-        </div>
-    )
+    </div>
+  )
 }
