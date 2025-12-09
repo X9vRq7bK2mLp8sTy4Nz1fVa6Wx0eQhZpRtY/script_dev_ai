@@ -1,288 +1,229 @@
 'use client'
 
-import React, { useRef } from 'react'
+import { useState } from 'react'
 
 interface FileWithNotes {
-    file: File
-    notes: string
+  file: File
+  notes: string
 }
 
 interface FileUploaderProps {
-    files: FileWithNotes[]
-    onChange: (files: FileWithNotes[]) => void
-    maxFiles?: number
+  files: FileWithNotes[]
+  onChange: (files: FileWithNotes[]) => void
+  maxFiles?: number
 }
 
 export default function FileUploader({ files, onChange, maxFiles = 5 }: FileUploaderProps) {
-    const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
 
-        const newFiles = Array.from(e.target.files)
-        const remainingSlots = maxFiles - files.length
-        const filesToAdd = newFiles.slice(0, remainingSlots)
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    const luaFiles = droppedFiles.filter(f =>
+      f.name.endsWith('.lua') || f.name.endsWith('.luau') || f.name.endsWith('.txt')
+    )
 
-        const filesWithNotes: FileWithNotes[] = filesToAdd.map(file => ({
-            file,
-            notes: ''
-        }))
-
-        onChange([...files, ...filesWithNotes])
-
-        if (fileInputRef.current) {
-            fileInputRef.current.value = ''
-        }
+    if (files.length + luaFiles.length > maxFiles) {
+      alert(`Maximum ${maxFiles} files allowed`)
+      return
     }
 
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
+    const newFiles = luaFiles.map(file => ({ file, notes: '' }))
+    onChange([...files, ...newFiles])
+  }
 
-        const droppedFiles = Array.from(e.dataTransfer.files)
-        const remainingSlots = maxFiles - files.length
-        const filesToAdd = droppedFiles.slice(0, remainingSlots)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return
 
-        const filesWithNotes: FileWithNotes[] = filesToAdd.map(file => ({
-            file,
-            notes: ''
-        }))
+    const selectedFiles = Array.from(e.target.files)
+    const luaFiles = selectedFiles.filter(f =>
+      f.name.endsWith('.lua') || f.name.endsWith('.luau') || f.name.endsWith('.txt')
+    )
 
-        onChange([...files, ...filesWithNotes])
+    if (files.length + luaFiles.length > maxFiles) {
+      alert(`Maximum ${maxFiles} files allowed`)
+      return
     }
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-        e.stopPropagation()
-    }
+    const newFiles = luaFiles.map(file => ({ file, notes: '' }))
+    onChange([...files, ...newFiles])
+  }
 
-    const removeFile = (index: number) => {
-        onChange(files.filter((_, i) => i !== index))
-    }
+  const updateNotes = (index: number, notes: string) => {
+    const updated = [...files]
+    updated[index].notes = notes
+    onChange(updated)
+  }
 
-    const updateNotes = (index: number, notes: string) => {
-        const updated = files.map((f, i) =>
-            i === index ? { ...f, notes } : f
-        )
-        onChange(updated)
-    }
+  const removeFile = (index: number) => {
+    onChange(files.filter((_, i) => i !== index))
+  }
 
-    const formatFileSize = (bytes: number): string => {
-        if (bytes === 0) return '0 Bytes'
-        const k = 1024
-        const sizes = ['Bytes', 'KB', 'MB', 'GB']
-        const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-    }
+  return (
+    <div className="file-uploader">
+      {files.length === 0 ? (
+        <div
+          className={`drop-zone ${dragging ? 'dragging' : ''}`}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragging(true)
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => document.getElementById('file-input')?.click()}
+        >
+          <span className="drop-icon">📁</span>
+          <p>Drop Lua files here or click to browse</p>
+          <span className="file-hint">Up to {maxFiles} files (.lua, .luau, .txt)</span>
+        </div>
+      ) : (
+        <div className="files-list">
+          {files.map((fileWithNotes, index) => (
+            <div key={index} className="file-card">
+              <div className="file-header">
+                <span className="file-name">📄 {fileWithNotes.file.name}</span>
+                <button className="remove-btn" onClick={() => removeFile(index)}>
+                  ✕
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Add notes about this file..."
+                value={fileWithNotes.notes}
+                onChange={(e) => updateNotes(index, e.target.value)}
+                className="file-notes-input"
+              />
+            </div>
+          ))}
+          {files.length < maxFiles && (
+            <button
+              className="add-more-btn"
+              onClick={() => document.getElementById('file-input')?.click()}
+            >
+              + Add more files ({files.length}/{maxFiles})
+            </button>
+          )}
+        </div>
+      )}
 
-    const getFileIcon = (filename: string): string => {
-        if (filename.endsWith('.lua') || filename.endsWith('.luau')) return '📜'
-        if (filename.endsWith('.txt')) return '📄'
-        return '📁'
-    }
+      <input
+        id="file-input"
+        type="file"
+        multiple
+        accept=".lua,.luau,.txt"
+        onChange={handleFileSelect}
+        style={{ display: 'none' }}
+      />
 
-    return (
-        <div className="file-uploader">
-            <label className="upload-label">
-                Dependency Files ({files.length}/{maxFiles})
-            </label>
-
-            {files.length < maxFiles && (
-                <div
-                    className="drop-zone"
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    <div className="drop-zone-content">
-                        <span className="upload-icon">📤</span>
-                        <p className="drop-text">Drop Lua files here or click to browse</p>
-                        <p className="drop-subtext">Upload sample scripts, dependencies, or reference code</p>
-                    </div>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept=".lua,.luau,.txt"
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                    />
-                </div>
-            )}
-
-            {files.length > 0 && (
-                <div className="files-list">
-                    {files.map((fileWithNotes, index) => (
-                        <div key={index} className="file-item">
-                            <div className="file-header">
-                                <div className="file-info">
-                                    <span className="file-icon">{getFileIcon(fileWithNotes.file.name)}</span>
-                                    <div>
-                                        <div className="file-name">{fileWithNotes.file.name}</div>
-                                        <div className="file-size">{formatFileSize(fileWithNotes.file.size)}</div>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => removeFile(index)}
-                                    className="remove-btn"
-                                    title="Remove file"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-
-                            <textarea
-                                className="file-notes"
-                                placeholder="Add notes about this file (e.g., 'Similar implementation', 'Reference for X feature', 'Different variant'...)"
-                                value={fileWithNotes.notes}
-                                onChange={(e) => updateNotes(index, e.target.value)}
-                            />
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <style jsx>{`
+      <style jsx>{`
         .file-uploader {
-          margin-bottom: var(--spacing-xl);
-        }
-
-        .upload-label {
-          display: block;
-          font-weight: 600;
-          font-size: 1rem;
           margin-bottom: var(--spacing-md);
-          color: var(--color-text-primary);
         }
 
         .drop-zone {
+          padding: var(--spacing-xl);
           border: 2px dashed var(--color-border);
           border-radius: var(--radius-lg);
-          padding: var(--spacing-2xl);
           text-align: center;
           cursor: pointer;
           transition: all var(--transition-normal);
-          background: var(--color-bg-elevated);
         }
 
-        .drop-zone:hover {
+        .drop-zone:hover,
+        .drop-zone.dragging {
           border-color: var(--color-accent-primary);
           background: rgba(99, 102, 241, 0.05);
         }
 
-        .drop-zone-content {
-          pointer-events: none;
-        }
-
-        .upload-icon {
+        .drop-icon {
           font-size: 3rem;
           display: block;
           margin-bottom: var(--spacing-md);
-          opacity: 0.7;
         }
 
-        .drop-text {
+        .drop-zone p {
+          margin: 0 0 var(--spacing-sm) 0;
           font-weight: 600;
-          font-size: 1.125rem;
-          color: var(--color-text-primary);
-          margin-bottom: var(--spacing-xs);
         }
 
-        .drop-subtext {
-          font-size: 0.875rem;
+        .file-hint {
+          font-size: 0.75rem;
           color: var(--color-text-tertiary);
-          margin: 0;
         }
 
         .files-list {
           display: flex;
           flex-direction: column;
-          gap: var(--spacing-md);
-          margin-top: var(--spacing-md);
+          gap: var(--spacing-sm);
         }
 
-        .file-item {
+        .file-card {
+          padding: var(--spacing-md);
           background: var(--color-bg-elevated);
           border: 1px solid var(--color-border);
-          border-radius: var(--radius-lg);
-          padding: var(--spacing-lg);
-          animation: slideUp 0.3s ease;
+          border-radius: var(--radius-md);
         }
 
         .file-header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: var(--spacing-md);
-        }
-
-        .file-info {
-          display: flex;
           align-items: center;
-          gap: var(--spacing-md);
-        }
-
-        .file-icon {
-          font-size: 2rem;
+          margin-bottom: var(--spacing-sm);
         }
 
         .file-name {
-          font-weight: 600;
-          color: var(--color-text-primary);
-          margin-bottom: 0.25rem;
-          word-break: break-all;
-        }
-
-        .file-size {
           font-size: 0.875rem;
-          color: var(--color-text-tertiary);
+          font-weight: 600;
         }
 
         .remove-btn {
-          background: rgba(239, 68, 68, 0.1);
-          color: var(--color-accent-error);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          border-radius: var(--radius-sm);
-          width: 32px;
-          height: 32px;
+          background: transparent;
+          border: none;
+          color: var(--color-text-secondary);
+          cursor: pointer;
+          font-size: 1.125rem;
+          width: 24px;
+          height: 24px;
           display: flex;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
+          border-radius: var(--radius-sm);
           transition: all var(--transition-fast);
-          font-size: 1.25rem;
-          line-height: 1;
         }
 
         .remove-btn:hover {
-          background: rgba(239, 68, 68, 0.2);
-          border-color: var(--color-accent-error);
+          background: rgba(239, 68, 68, 0.1);
+          color: var(--color-accent-error);
         }
 
-        .file-notes {
+        .file-notes-input {
           width: 100%;
-          min-height: 80px;
-          padding: var(--spacing-md);
+          padding: var(--spacing-sm);
           background: var(--color-bg-secondary);
           border: 1px solid var(--color-border);
-          border-radius: var(--radius-md);
+          border-radius: var(--radius-sm);
           color: var(--color-text-primary);
           font-size: 0.875rem;
-          resize: vertical;
+        }
+
+        .add-more-btn {
+          padding: var(--spacing-md);
+          background: var(--color-bg-elevated);
+          border: 1px dashed var(--color-border);
+          border-radius: var(--radius-md);
+          color: var(--color-text-secondary);
+          cursor: pointer;
+          font-weight: 600;
           transition: all var(--transition-normal);
         }
 
-        .file-notes:focus {
-          outline: none;
+        .add-more-btn:hover {
           border-color: var(--color-accent-primary);
-          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .file-notes::placeholder {
-          color: var(--color-text-muted);
+          color: var(--color-accent-primary);
         }
       `}</style>
-        </div>
-    )
+    </div>
+  )
 }
