@@ -111,14 +111,40 @@ Please generate a complete, well-documented Roblox Lua script that fulfills the 
 
 IMPORTANT: Return ONLY the Lua code with comments. Do not include any markdown formatting, explanations outside the code, or code block markers. Just pure Lua code that can be directly copied and used.`
 
-        // Generate script using Gemini
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
-        const result = await model.generateContent(fullPrompt)
-        const response = await result.response
-        let generatedScript = response.text()
+        // Model priority list with fallbacks
+        const models = [
+            'gemini-2.5-flash',      // Primary: Best price-performance (stable)
+            'gemini-2.5-flash-lite', // Fallback 1: Faster and cheaper
+            'gemini-2.0-flash'       // Fallback 2: Older but stable
+        ]
 
-        // Clean up any markdown code blocks if they appear
-        generatedScript = generatedScript.replace(/```lua\n?/g, '').replace(/```\n?/g, '').trim()
+        let generatedScript = ''
+        let lastError: Error | null = null
+
+        // Try each model until one succeeds
+        for (const modelName of models) {
+            try {
+                const model = genAI.getGenerativeModel({ model: modelName })
+                const result = await model.generateContent(fullPrompt)
+                const response = await result.response
+                generatedScript = response.text()
+
+                // Clean up any markdown code blocks if they appear
+                generatedScript = generatedScript.replace(/```lua\n?/g, '').replace(/```\n?/g, '').trim()
+
+                // Success! Break out of the loop
+                break
+            } catch (error: any) {
+                console.error(`Model ${modelName} failed:`, error.message)
+                lastError = error
+                // Continue to next model
+            }
+        }
+
+        // If all models failed, throw the last error
+        if (!generatedScript && lastError) {
+            throw lastError
+        }
 
         return NextResponse.json({ script: generatedScript })
 
