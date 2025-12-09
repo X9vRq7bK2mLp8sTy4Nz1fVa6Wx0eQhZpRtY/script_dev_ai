@@ -4,96 +4,96 @@ import { useState } from 'react'
 import ReactDiffViewer from 'react-diff-viewer-continued'
 
 interface DiffViewerProps {
-    code: string
-    onClose: () => void
-    onAccept: (code: string) => void
-    onReject: (reason: string) => void
+  code: string
+  onClose: () => void
+  onAccept: (code: string) => void
+  onReject: (reason: string) => void
 }
 
 export default function DiffViewer({ code, onClose, onAccept, onReject }: DiffViewerProps) {
-    const [rejectionReason, setRejectionReason] = useState('')
-    const [showRejectInput, setShowRejectInput] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [showRejectInput, setShowRejectInput] = useState(false)
 
-    // For now, we'll show new code vs empty (since we don't have old code stored)
-    // In a real implementation, you'd fetch the previous file content
-    const oldCode = '-- Previous code will be shown here\n-- (Not yet implemented in this version)'
-    const newCode = code
+  // For now, we'll show new code vs empty (since we don't have old code stored)
+  // In a real implementation, you'd fetch the previous file content
+  const oldCode = '-- Previous code will be shown here\n-- (Not yet implemented in this version)'
+  const newCode = code
 
-    const handleAccept = () => {
-        onAccept(code)
+  const handleAccept = () => {
+    onAccept(code)
+  }
+
+  const handleReject = () => {
+    if (showRejectInput && rejectionReason.trim()) {
+      onReject(rejectionReason)
+    } else {
+      setShowRejectInput(true)
     }
+  }
 
-    const handleReject = () => {
-        if (showRejectInput && rejectionReason.trim()) {
-            onReject(rejectionReason)
-        } else {
-            setShowRejectInput(true)
-        }
-    }
+  return (
+    <div className="diff-viewer">
+      <div className="diff-header">
+        <h3>Code Changes</h3>
+        <button className="close-btn" onClick={onClose}>✕</button>
+      </div>
 
-    return (
-        <div className="diff-viewer">
-            <div className="diff-header">
-                <h3>Code Changes</h3>
-                <button className="close-btn" onClick={onClose}>✕</button>
-            </div>
+      <div className="diff-content">
+        <ReactDiffViewer
+          oldValue={oldCode}
+          newValue={newCode}
+          splitView={true}
+          useDarkTheme={true}
+          leftTitle="Previous"
+          rightTitle="Generated"
+          styles={{
+            variables: {
+              dark: {
+                diffViewerBackground: '#1a1a26',
+                diffViewerColor: '#f9fafb',
+                addedBackground: '#10b9814d',
+                addedColor: '#f9fafb',
+                removedBackground: '#ef44444d',
+                removedColor: '#f9fafb',
+                wordAddedBackground: '#10b981',
+                wordRemovedBackground: '#ef4444',
+                addedGutterBackground: '#10b9813d',
+                removedGutterBackground: '#ef44443d',
+                gutterBackground: '#12121a',
+                gutterBackgroundDark: '#0a0a0f',
+                highlightBackground: '#6366f14d',
+                highlightGutterBackground: '#6366f13d',
+              },
+            },
+          }}
+        />
+      </div>
 
-            <div className="diff-content">
-                <ReactDiffViewer
-                    oldValue={oldCode}
-                    newValue={newCode}
-                    splitView={true}
-                    useDarkTheme={true}
-                    leftTitle="Previous"
-                    rightTitle="Generated"
-                    styles={{
-                        variables: {
-                            dark: {
-                                diffViewerBackground: '#1a1a26',
-                                diffViewerColor: '#f9fafb',
-                                addedBackground: '#10b9814d',
-                                addedColor: '#f9fafb',
-                                removedBackground: '#ef44444d',
-                                removedColor: '#f9fafb',
-                                wordAddedBackground: '#10b981',
-                                wordRemovedBackground: '#ef4444',
-                                addedGutterBackground: '#10b9813d',
-                                removedGutterBackground: '#ef44443d',
-                                gutterBackground: '#12121a',
-                                gutterBackgroundDark: '#0a0a0f',
-                                highlightBackground: '#6366f14d',
-                                highlightGutterBackground: '#6366f13d',
-                            },
-                        },
-                    }}
-                />
-            </div>
-
-            {showRejectInput && (
-                <div className="reject-input">
-                    <textarea
-                        value={rejection Reason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Why are you rejecting this code? AI will learn from your feedback..."
-                    rows={3}
-                    autoFocus
+      {showRejectInput && (
+        <div className="reject-input">
+          <textarea
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Why are you rejecting this code? AI will learn from your feedback..."
+            rows={3}
+            autoFocus
           />
-                </div>
-            )}
+        </div>
+      )}
 
-            <div className="diff-actions">
-                <button
-                    className="btn btn-secondary"
-                    onClick={handleReject}
-                >
-                    {showRejectInput ? '✕ Reject & Send Feedback' : '✕ Reject'}
-                </button>
-                <button className="btn btn-primary" onClick={handleAccept}>
-                    ✓ Accept & Commit
-                </button>
-            </div>
+      <div className="diff-actions">
+        <button
+          className="btn btn-secondary"
+          onClick={handleReject}
+        >
+          {showRejectInput ? '✕ Reject & Send Feedback' : '✕ Reject'}
+        </button>
+        <button className="btn btn-primary" onClick={handleAccept}>
+          ✓ Accept & Commit
+        </button>
+      </div>
 
-            <style jsx>{`
+      <style jsx>{`
         .diff-viewer {
           background: var(--color-bg-secondary);
           border-left: 1px solid var(--color-border);
@@ -170,6 +170,6 @@ export default function DiffViewer({ code, onClose, onAccept, onReject }: DiffVi
           flex: 1;
         }
       `}</style>
-        </div>
-    )
+    </div>
+  )
 }
